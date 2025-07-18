@@ -1,0 +1,1089 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Protein Viewer Popup</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 40px;
+            background: #ffffff;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .main-button {
+            background: #000000;
+            color: #ffffff;
+            border: none;
+            padding: 16px 32px;
+            border-radius: 4px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-transform: none;
+            letter-spacing: 0;
+        }
+        
+        .main-button:hover {
+            background: #333333;
+            transform: translateY(-1px);
+        }
+        
+        .popup-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(5px);
+            z-index: 9999;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .popup-container {
+            width: 95vw;
+            height: 90vh;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            animation: popupOpen 0.3s ease-out;
+        }
+        
+        @keyframes popupOpen {
+            from {
+                opacity: 0;
+                transform: scale(0.8);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+        
+        .close-button {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.9);
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            font-size: 18px;
+            cursor: pointer;
+            z-index: 10001;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+        
+        .close-button:hover {
+            background: rgba(255, 255, 255, 1);
+            transform: scale(1.1);
+        }
+        
+        #viewer {
+            flex: 1;
+            height: 100%;
+            background: radial-gradient(circle, #f8f9fa 0%, #e9ecef 100%);
+        }
+        
+        #controls {
+            width: 300px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            overflow-y: auto;
+            border-left: 1px solid #e1e8ed;
+        }
+        
+        #controls h3 {
+            margin: 0 0 15px 0;
+            color: #2c3e50;
+            font-size: 18px;
+        }
+        
+        .control-group {
+            margin: 15px 0;
+        }
+        
+        .control-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #34495e;
+            font-size: 14px;
+        }
+        
+        select, button {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+            border: 2px solid #e1e8ed;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+        
+        button {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        
+        select:focus, button:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 255, 255, 0.9);
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            z-index: 10000;
+        }
+        
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        #info {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+            max-width: 300px;
+            z-index: 10000;
+        }
+        
+        .protein-info {
+            font-size: 12px;
+            color: #555;
+            line-height: 1.4;
+        }
+        
+        .motion-controls {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 10px;
+            border-radius: 8px;
+            margin: 10px 0;
+            border-left: 4px solid #667eea;
+        }
+        
+        .motion-controls h4 {
+            margin: 0 0 10px 0;
+            color: #2c3e50;
+            font-size: 14px;
+        }
+        
+        .motion-controls button {
+            margin: 2px;
+            padding: 8px;
+            font-size: 12px;
+        }
+        
+        .main-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            color: #000000;
+        }
+        
+        .main-content h1 {
+            font-size: 32px;
+            margin-bottom: 16px;
+            font-weight: 400;
+        }
+        
+        .main-content p {
+            font-size: 16px;
+            margin-bottom: 24px;
+            color: #666666;
+            max-width: 400px;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-content">
+        <h1>Protein Viewer</h1>
+        <p>Explore protein structures with interactive 3D visualization</p>
+        <button class="main-button" onclick="openProteinViewer()">
+            Open Viewer
+        </button>
+    </div>
+
+    <div class="popup-overlay" id="popupOverlay">
+        <div class="popup-container">
+            <button class="close-button" onclick="closeProteinViewer()">&times;</button>
+            
+            <div id="loading">
+                <div class="spinner"></div>
+                <div>Loading protein structure...</div>
+            </div>
+            
+            <div id="viewer"></div>
+            
+            <div id="controls">
+                <h3>🧬 Protein Viewer</h3>
+                
+                <div class="control-group">
+                    <label>Select Protein:</label>
+                    <select id="proteinSelect">
+                        <option value="1crn">Crambin (Single Chain)</option>
+                        <option value="1ubq">Ubiquitin (Single Chain)</option>
+                        <option value="1lys">Lysozyme (Single Chain)</option>
+                        <option value="1mbn">Myoglobin (Single Chain)</option>
+                        <option value="1bna">DNA Binding (Single Chain)</option>
+                        <option value="2ins">Insulin (2 Chains)</option>
+                        <option value="1hen">Lysozyme (Single Chain)</option>
+                        <option value="1ctf">Cytochrome (Single Chain)</option>
+                        <option value="1hbb">Hemoglobin (4 Chains)</option>
+                        <option value="1igd">Antibody (2 Chains)</option>
+                        <option value="1ak0">Adenylate Kinase (2 Domains)</option>
+                        <option value="1bpi">Protease Inhibitor Complex</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <label>Style:</label>
+                    <select id="styleSelect">
+                        <option value="cartoon">Cartoon (Ribbon)</option>
+                        <option value="ribbon">Ribbon (Flat)</option>
+                        <option value="trace">Trace (Line)</option>
+                        <option value="tube">Tube (Round)</option>
+                        <option value="stick">Stick (Bonds)</option>
+                        <option value="sphere">Sphere (Atoms)</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <label>Color Scheme:</label>
+                    <select id="colorSelect">
+                        <option value="spectrum">Spectrum (Rainbow)</option>
+                        <option value="chain">By Chain (Best for Multi-chain)</option>
+                        <option value="ss">Secondary Structure</option>
+                        <option value="residue">By Residue</option>
+                        <option value="hydrophobicity">Hydrophobicity</option>
+                        <option value="elem">By Element</option>
+                    </select>
+                </div>
+                
+                <button onclick="loadProtein()">Load Protein</button>
+                <button onclick="resetView()">Reset View</button>
+                
+                <div class="motion-controls">
+                    <h4>Motion Controls</h4>
+                    <button onclick="toggleSpin()">Toggle Spin</button>
+                    <button onclick="toggleChainWiggle()">Chain Wiggle</button>
+                    <button onclick="toggleDynamicMotion()">Full Dynamic</button>
+                    <button onclick="stopAllMotion()">Stop All</button>
+                </div>
+                
+                <button onclick="saveImage()">Save Image</button>
+            </div>
+            
+            <div id="info">
+                <div class="protein-info">
+                    <strong>Controls:</strong><br>
+                    • Left click + drag: Rotate<br>
+                    • Right click + drag: Pan<br>
+                    • Mouse wheel: Zoom<br>
+                    • Double click: Center view<br><br>
+                    <strong>Motion Status:</strong><br>
+                    <span id="motionStatus">Static</span><br><br>
+                    <strong>Current:</strong> <span id="currentProtein">Crambin</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://3dmol.org/build/3Dmol-min.js"></script>
+    <script>
+        let viewer;
+        let isSpinning = false;
+        let isChainWiggling = false;
+        let isDynamicMotion = false;
+        let animationId;
+        let time = 0;
+        let originalAtomPositions = new Map();
+        let chainInfo = [];
+        let isViewerReady = false;
+        let positionCheckAttempts = 0;
+        let maxPositionCheckAttempts = 50;
+        let isPopupOpen = false;
+        
+        // Protein information database
+        const proteinInfo = {
+            '1crn': 'Crambin - Single chain plant protein (46 residues)',
+            '1ubq': 'Ubiquitin - Single chain degradation signal (76 residues)',
+            '1lys': 'Lysozyme - Single chain enzyme (129 residues)',
+            '1mbn': 'Myoglobin - Single chain oxygen storage (153 residues)',
+            '1bna': 'DNA Binding - Single chain protein (105 residues)',
+            '2ins': 'Insulin - 2 chains (A & B) hormone complex (51 residues)',
+            '1hen': 'Hen Lysozyme - Single chain enzyme (129 residues)',
+            '1ctf': 'Cytochrome - Single chain electron transport (103 residues)',
+            '1hbb': 'Hemoglobin - 4 chains (2α, 2β) oxygen transport',
+            '1igd': 'Antibody - 2 chains (heavy & light) immunoglobulin',
+            '1ak0': 'Adenylate Kinase - 2 domains that open/close',
+            '1bpi': 'Protease Inhibitor - Enzyme-inhibitor complex'
+        };
+        
+        function openProteinViewer() {
+            document.getElementById('popupOverlay').style.display = 'flex';
+            isPopupOpen = true;
+            
+            // Initialize viewer if not already done
+            if (!viewer) {
+                setTimeout(() => {
+                    init();
+                }, 100);
+            }
+        }
+        
+        function closeProteinViewer() {
+            document.getElementById('popupOverlay').style.display = 'none';
+            isPopupOpen = false;
+            
+            // Stop all animations when closing
+            stopAllMotion();
+        }
+        
+        // Close popup when clicking outside
+        document.getElementById('popupOverlay').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeProteinViewer();
+            }
+        });
+        
+        // Close popup with Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && isPopupOpen) {
+                closeProteinViewer();
+            }
+        });
+        
+        function init() {
+            try {
+                viewer = $3Dmol.createViewer('viewer', {
+                    defaultcolors: $3Dmol.rasmolElementColors
+                });
+                
+                // Wait a moment for viewer to initialize
+                setTimeout(() => {
+                    loadProtein();
+                }, 100);
+            } catch (error) {
+                console.error('Error initializing viewer:', error);
+                alert('Failed to initialize 3D viewer. Please refresh the page.');
+            }
+        }
+        
+        function showLoading() {
+            document.getElementById('loading').style.display = 'block';
+        }
+        
+        function hideLoading() {
+            document.getElementById('loading').style.display = 'none';
+        }
+        
+        function storeOriginalPositions() {
+            originalAtomPositions.clear();
+            chainInfo = [];
+            positionCheckAttempts = 0;
+            
+            try {
+                if (!viewer || typeof viewer.getModel !== 'function') {
+                    console.log('Viewer or getModel function not available');
+                    isViewerReady = false;
+                    return false;
+                }
+                
+                // Try to get the first model directly
+                const model = viewer.getModel(0);
+                if (!model) {
+                    console.log('No model found at index 0');
+                    isViewerReady = false;
+                    return false;
+                }
+                
+                console.log('Model found, attempting to get atoms...');
+                
+                // Try different ways to get atoms
+                let atoms;
+                if (typeof model.selectedAtoms === 'function') {
+                    atoms = model.selectedAtoms({});
+                } else if (model.atoms) {
+                    atoms = model.atoms;
+                } else {
+                    console.log('Cannot find atoms in model');
+                    isViewerReady = false;
+                    return false;
+                }
+                
+                if (!atoms || atoms.length === 0) {
+                    console.log('No atoms found in model');
+                    isViewerReady = false;
+                    return false;
+                }
+                
+                console.log(`Found ${atoms.length} atoms`);
+                
+                const chains = {};
+                let validAtoms = 0;
+                
+                atoms.forEach((atom, atomIndex) => {
+                    // Check if atom has valid coordinates
+                    if (typeof atom.x === 'number' && typeof atom.y === 'number' && typeof atom.z === 'number') {
+                        const key = `0-${atomIndex}`;
+                        originalAtomPositions.set(key, {
+                            x: atom.x,
+                            y: atom.y,
+                            z: atom.z
+                        });
+                        
+                        const chain = atom.chain || 'A';
+                        if (!chains[chain]) {
+                            chains[chain] = [];
+                        }
+                        chains[chain].push({
+                            atom: atom,
+                            key: key,
+                            index: atomIndex
+                        });
+                        validAtoms++;
+                    }
+                });
+                
+                if (validAtoms > 0) {
+                    chainInfo.push(chains);
+                    isViewerReady = true;
+                    console.log(`Successfully stored ${validAtoms} atom positions across ${Object.keys(chains).length} chains`);
+                    console.log('Chains found:', Object.keys(chains));
+                    return true;
+                } else {
+                    console.log('No valid atoms with coordinates found');
+                    isViewerReady = false;
+                    return false;
+                }
+            } catch (error) {
+                console.error('Error storing original positions:', error);
+                isViewerReady = false;
+                return false;
+            }
+        }
+        
+        function loadProtein() {
+            const proteinId = document.getElementById('proteinSelect').value;
+            const style = document.getElementById('styleSelect').value;
+            const color = document.getElementById('colorSelect').value;
+            
+            showLoading();
+            stopAllMotion();
+            
+            viewer.removeAllModels();
+            
+            const pdbUrl = `https://files.rcsb.org/view/${proteinId}.pdb`;
+            
+            const timeoutId = setTimeout(() => {
+                hideLoading();
+                alert('Loading timed out. Please try a different protein or check your connection.');
+            }, 15000);
+            
+            fetch(pdbUrl)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.text();
+                })
+                .then(data => {
+                    clearTimeout(timeoutId);
+                    
+                    try {
+                        if (!data || data.length === 0) {
+                            throw new Error('No data received');
+                        }
+                        
+                        viewer.addModel(data, 'pdb');
+                        applyStyle(style, color);
+                        
+                        // Store original positions after rendering is complete
+                        viewer.render();
+                        
+                        // Wait a bit longer and try multiple times to store positions
+                        setTimeout(() => {
+                            console.log('Attempting to store original positions...');
+                            const success = storeOriginalPositions();
+                            if (!success) {
+                                console.log('First attempt failed, trying again...');
+                                // Try again after a longer delay
+                                setTimeout(() => {
+                                    console.log('Second attempt to store positions...');
+                                    const success2 = storeOriginalPositions();
+                                    if (success2) {
+                                        console.log('Successfully stored positions on second attempt');
+                                    } else {
+                                        console.log('Failed to store positions after multiple attempts');
+                                    }
+                                }, 2000);
+                            } else {
+                                console.log('Successfully stored positions on first attempt');
+                            }
+                        }, 1000);
+                        
+                        document.getElementById('currentProtein').textContent = 
+                            proteinInfo[proteinId] || proteinId;
+                        
+                        hideLoading();
+                    } catch (error) {
+                        console.error('Error loading protein:', error);
+                        hideLoading();
+                        alert('Failed to load protein. Please try another.');
+                    }
+                })
+                .catch(error => {
+                    clearTimeout(timeoutId);
+                    hideLoading();
+                    console.error('Fetch error:', error);
+                    alert('Failed to download protein data. Please try another.');
+                });
+        }
+        
+        function applyStyle(style, color) {
+            viewer.setStyle({}, {});
+            
+            let styleObj = {};
+            
+            // Simplify color scheme handling - use basic colors that definitely work
+            let colorScheme;
+            switch(color) {
+                case 'spectrum':
+                case 'rainbow':
+                    colorScheme = 'rainbow';
+                    break;
+                case 'chain':
+                    colorScheme = 'chain';
+                    break;
+                case 'ss':
+                    colorScheme = 'sstruc';
+                    break;
+                case 'residue':
+                    colorScheme = 'residue';
+                    break;
+                case 'hydrophobicity':
+                    colorScheme = 'hydrophobicity';
+                    break;
+                case 'elem':
+                    colorScheme = 'element';
+                    break;
+                default:
+                    colorScheme = 'chain'; // Safe fallback
+            }
+            
+            try {
+                switch(style) {
+                    case 'cartoon':
+                        styleObj.cartoon = {
+                            colorscheme: colorScheme,
+                            arrows: true,
+                            tubes: false,
+                            thickness: 0.4
+                        };
+                        break;
+                    case 'ribbon':
+                        styleObj.ribbon = {
+                            colorscheme: colorScheme,
+                            thickness: 0.2,
+                            width: 1.5
+                        };
+                        break;
+                    case 'trace':
+                        styleObj.line = {
+                            colorscheme: colorScheme,
+                            linewidth: 3
+                        };
+                        break;
+                    case 'tube':
+                        styleObj.cartoon = {
+                            colorscheme: colorScheme,
+                            arrows: false,
+                            tubes: true,
+                            thickness: 0.8
+                        };
+                        break;
+                    case 'stick':
+                        styleObj.stick = {
+                            colorscheme: colorScheme,
+                            radius: 0.3
+                        };
+                        break;
+                    case 'sphere':
+                        styleObj.sphere = {
+                            colorscheme: colorScheme,
+                            scale: 0.3
+                        };
+                        break;
+                }
+                
+                viewer.setStyle({}, styleObj);
+                
+                if (style === 'cartoon') {
+                    try {
+                        viewer.addStyle({hetflag: true}, {stick: {colorscheme: colorScheme, radius: 0.3}});
+                        viewer.addStyle({elem: 'ZN'}, {sphere: {scale: 0.5, color: 'gray'}});
+                        viewer.addStyle({elem: 'FE'}, {sphere: {scale: 0.5, color: 'orange'}});
+                        viewer.addStyle({elem: 'MG'}, {sphere: {scale: 0.5, color: 'green'}});
+                        viewer.addStyle({elem: 'CA'}, {sphere: {scale: 0.5, color: 'green'}});
+                    } catch (e) {
+                        console.log('Some additional styling failed, but main style applied');
+                    }
+                }
+                
+                viewer.zoomTo();
+                viewer.render();
+            } catch (error) {
+                console.error('Error applying style:', error);
+                // Fallback to basic cartoon style
+                viewer.setStyle({}, {cartoon: {colorscheme: 'chain'}});
+                viewer.zoomTo();
+                viewer.render();
+            }
+        }
+        
+        function resetView() {
+            viewer.zoomTo();
+            viewer.render();
+        }
+        
+        function updateMotionStatus() {
+            let status = [];
+            if (isSpinning) status.push('Spinning');
+            if (isChainWiggling) status.push('Chain Wiggle');
+            if (isDynamicMotion) status.push('Full Dynamic');
+            
+            document.getElementById('motionStatus').textContent = 
+                status.length > 0 ? status.join(', ') : 'Static';
+        }
+        
+        function toggleSpin() {
+            isSpinning = !isSpinning;
+            if (isSpinning) {
+                viewer.spin(true);
+            } else {
+                viewer.spin(false);
+            }
+            updateMotionStatus();
+        }
+        
+        function toggleChainWiggle() {
+            isChainWiggling = !isChainWiggling;
+            if (isChainWiggling) {
+                startChainWiggle();
+            } else {
+                stopChainWiggle();
+            }
+            updateMotionStatus();
+        }
+        
+        function toggleDynamicMotion() {
+            isDynamicMotion = !isDynamicMotion;
+            if (isDynamicMotion) {
+                startDynamicMotion();
+            } else {
+                stopDynamicMotion();
+            }
+            updateMotionStatus();
+        }
+        
+        function stopAllMotion() {
+            isSpinning = false;
+            isChainWiggling = false;
+            isDynamicMotion = false;
+            
+            if (viewer) {
+                viewer.spin(false);
+            }
+            
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+                animationId = null;
+            }
+            
+            // Reset positions only if we have stored them
+            if (isViewerReady && originalAtomPositions.size > 0) {
+                resetAtomPositions();
+            }
+            
+            updateMotionStatus();
+        }
+        
+        function resetAtomPositions() {
+            try {
+                if (!viewer || typeof viewer.getModel !== 'function') {
+                    console.log('Viewer not available for reset');
+                    return;
+                }
+                
+                const model = viewer.getModel(0);
+                if (!model) {
+                    console.log('No model found for reset');
+                    return;
+                }
+                
+                let atoms;
+                if (typeof model.selectedAtoms === 'function') {
+                    atoms = model.selectedAtoms({});
+                } else if (model.atoms) {
+                    atoms = model.atoms;
+                } else {
+                    console.log('Cannot find atoms for reset');
+                    return;
+                }
+                
+                let resetCount = 0;
+                atoms.forEach((atom, atomIndex) => {
+                    const key = `0-${atomIndex}`;
+                    const original = originalAtomPositions.get(key);
+                    if (original && typeof atom.x === 'number') {
+                        atom.x = original.x;
+                        atom.y = original.y;
+                        atom.z = original.z;
+                        resetCount++;
+                    }
+                });
+                
+                console.log(`Reset ${resetCount} atoms to original positions`);
+                viewer.render();
+            } catch (error) {
+                console.error('Error resetting atom positions:', error);
+            }
+        }
+        
+        function startChainWiggle() {
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+            }
+            
+            function wiggleChains() {
+                if (!isChainWiggling && !isDynamicMotion) return;
+                
+                try {
+                    if (!isViewerReady || chainInfo.length === 0) {
+                        positionCheckAttempts++;
+                        
+                        if (positionCheckAttempts < maxPositionCheckAttempts) {
+                            // Try to store positions, but don't spam the console
+                            if (positionCheckAttempts % 10 === 0) {
+                                console.log(`Attempting to initialize chain data (${positionCheckAttempts}/${maxPositionCheckAttempts})`);
+                            }
+                            
+                            const success = storeOriginalPositions();
+                            if (!success) {
+                                // Wait longer between attempts
+                                setTimeout(() => {
+                                    if (isChainWiggling || isDynamicMotion) {
+                                        animationId = requestAnimationFrame(wiggleChains);
+                                    }
+                                }, 200);
+                                return;
+                            }
+                        } else {
+                            console.warn('Failed to initialize chain data after maximum attempts');
+                            isChainWiggling = false;
+                            isDynamicMotion = false;
+                            updateMotionStatus();
+                            return;
+                        }
+                    }
+                    
+                    time += 0.025; // Slightly slower for smoother motion
+                    
+                    let totalAtomsProcessed = 0;
+                    
+                    chainInfo.forEach((chains, modelIndex) => {
+                        Object.keys(chains).forEach((chainId, chainIndex) => {
+                            const chainAtoms = chains[chainId];
+                            
+                            console.log(`Processing chain ${chainId} with ${chainAtoms.length} atoms`);
+                            
+                            // Each chain gets its own wiggle pattern - smoother frequencies
+                            const chainOffset = chainIndex * 2.5;
+                            const wiggleX = Math.sin(time * 1.5 + chainOffset) * 1.2; // Smoother but still dramatic
+                            const wiggleY = Math.cos(time * 1.2 + chainOffset) * 1.0;
+                            const wiggleZ = Math.sin(time * 1.8 + chainOffset) * 1.1;
+                            
+                            // Additional secondary motion for more complex wiggling
+                            const secondaryX = Math.cos(time * 2.2 + chainOffset) * 0.8;
+                            const secondaryY = Math.sin(time * 1.9 + chainOffset) * 0.6;
+                            const secondaryZ = Math.cos(time * 1.4 + chainOffset) * 0.9;
+                            
+                            // Add tertiary motion for even more complexity
+                            const tertiaryX = Math.sin(time * 2.8 + chainOffset) * 0.4;
+                            const tertiaryY = Math.cos(time * 2.1 + chainOffset) * 0.5;
+                            const tertiaryZ = Math.sin(time * 1.7 + chainOffset) * 0.3;
+                            
+                            chainAtoms.forEach((atomData, atomIndex) => {
+                                const atom = atomData.atom;
+                                const original = originalAtomPositions.get(atomData.key);
+                                
+                                if (original && atom && typeof atom.x === 'number') {
+                                    // Apply position-dependent wiggle (atoms farther along chain move differently)
+                                    const positionFactor = atomIndex / chainAtoms.length;
+                                    const amplitude = 0.8 + positionFactor * 2.5; // Much more dramatic amplitude
+                                    
+                                    // Add wave-like motion along the chain - smoother
+                                    const waveMotion = Math.sin(time * 2.0 + positionFactor * 6.0) * 0.6;
+                                    
+                                    const newX = original.x + (wiggleX + secondaryX + tertiaryX + waveMotion) * amplitude;
+                                    const newY = original.y + (wiggleY + secondaryY + tertiaryY + waveMotion * 0.8) * amplitude;
+                                    const newZ = original.z + (wiggleZ + secondaryZ + tertiaryZ + waveMotion * 0.5) * amplitude;
+                                    
+                                    // Force update the atom coordinates
+                                    atom.x = newX;
+                                    atom.y = newY;
+                                    atom.z = newZ;
+                                    
+                                    totalAtomsProcessed++;
+                                } else if (!original) {
+                                    console.log(`Missing original position for atom ${atomData.key}`);
+                                }
+                            });
+                        });
+                    });
+                    
+                    console.log(`Wiggled ${totalAtomsProcessed} atoms`);
+                    
+                    // Force the viewer to update the molecular representation
+                    const model = viewer.getModel(0);
+                    if (model) {
+                        // Mark the model as needing coordinate updates
+                        model.setCoordinates = true;
+                        
+                        // Force re-creation of the molecular surface/representation
+                        try {
+                            const currentStyle = document.getElementById('styleSelect').value;
+                            const currentColor = document.getElementById('colorSelect').value;
+                            
+                            // Temporarily clear and reapply style to force update
+                            viewer.setStyle({}, {});
+                            applyStyle(currentStyle, currentColor);
+                        } catch (e) {
+                            // If style reapplication fails, just render
+                            viewer.render();
+                        }
+                    }
+                    
+                    viewer.render();
+                    
+                    // Force a complete re-render to show the atom movements
+                    if (viewer.getModel(0)) {
+                        viewer.getModel(0).setCoordinates = true;
+                    }
+                    
+                    if (isChainWiggling || isDynamicMotion) {
+                        animationId = requestAnimationFrame(wiggleChains);
+                    }
+                } catch (error) {
+                    console.error('Error in chain wiggle:', error);
+                    // Continue animation despite error, but with a delay
+                    setTimeout(() => {
+                        if (isChainWiggling || isDynamicMotion) {
+                            animationId = requestAnimationFrame(wiggleChains);
+                        }
+                    }, 100);
+                }
+            }
+            
+            wiggleChains();
+        }
+        
+        function stopChainWiggle() {
+            if (!isDynamicMotion) {
+                resetAtomPositions();
+            }
+        }
+        
+        function startDynamicMotion() {
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+            }
+            
+            function dynamicAnimate() {
+                if (!isDynamicMotion) return;
+                
+                try {
+                    if (!isViewerReady || chainInfo.length === 0) {
+                        positionCheckAttempts++;
+                        
+                        if (positionCheckAttempts < maxPositionCheckAttempts) {
+                            if (positionCheckAttempts % 10 === 0) {
+                                console.log(`Attempting to initialize chain data for dynamic motion (${positionCheckAttempts}/${maxPositionCheckAttempts})`);
+                            }
+                            
+                            const success = storeOriginalPositions();
+                            if (!success) {
+                                setTimeout(() => {
+                                    if (isDynamicMotion) {
+                                        animationId = requestAnimationFrame(dynamicAnimate);
+                                    }
+                                }, 200);
+                                return;
+                            }
+                        } else {
+                            console.warn('Failed to initialize chain data for dynamic motion');
+                            isDynamicMotion = false;
+                            updateMotionStatus();
+                            return;
+                        }
+                    }
+                    
+                    time += 0.03; // Smoother speed for full dynamic
+                    
+                    chainInfo.forEach((chains, modelIndex) => {
+                        Object.keys(chains).forEach((chainId, chainIndex) => {
+                            const chainAtoms = chains[chainId];
+                            const chainOffset = chainIndex * 2.0;
+                            
+                            // More dramatic motion for dynamic mode - smoother frequencies
+                            const wiggleX = Math.sin(time * 1.8 + chainOffset) * 1.8; // Still dramatic but smoother
+                            const wiggleY = Math.cos(time * 1.4 + chainOffset) * 1.5;
+                            const wiggleZ = Math.sin(time * 2.0 + chainOffset) * 1.6;
+                            
+                            // Add breathing motion
+                            const breathe = Math.sin(time * 0.6) * 0.8;
+                            
+                            // Add spiral motion
+                            const spiral = {
+                                x: Math.cos(time * 1.0 + chainOffset) * 1.0,
+                                y: Math.sin(time * 1.0 + chainOffset) * 1.0,
+                                z: Math.sin(time * 0.8 + chainOffset) * 0.4
+                            };
+                            
+                            // Add pulsing motion
+                            const pulse = Math.sin(time * 2.5 + chainOffset) * 0.5;
+                            
+                            chainAtoms.forEach((atomData, atomIndex) => {
+                                const atom = atomData.atom;
+                                const original = originalAtomPositions.get(atomData.key);
+                                
+                                if (original && atom) {
+                                    const positionFactor = atomIndex / chainAtoms.length;
+                                    const amplitude = 1.0 + positionFactor * 3.0; // Extremely dramatic
+                                    
+                                    // Add twisting motion that depends on position - smoother
+                                    const twist = {
+                                        x: Math.sin(time * 1.5 + chainOffset + positionFactor * 4.0) * 0.7,
+                                        y: Math.cos(time * 1.2 + chainOffset + positionFactor * 3.5) * 0.6,
+                                        z: Math.sin(time * 1.8 + chainOffset + positionFactor * 3.0) * 0.8
+                                    };
+                                    
+                                    // Add wave propagation along chain - smoother
+                                    const waveMotion = Math.sin(time * 2.5 + positionFactor * 8.0) * 0.8;
+                                    
+                                    atom.x = original.x + (wiggleX + spiral.x + breathe + pulse + twist.x + waveMotion) * amplitude;
+                                    atom.y = original.y + (wiggleY + spiral.y + breathe + pulse + twist.y + waveMotion * 0.7) * amplitude;
+                                    atom.z = original.z + (wiggleZ + spiral.z + breathe + pulse + twist.z + waveMotion * 0.9) * amplitude;
+                                }
+                            });
+                        });
+                    });
+                    
+                    viewer.render();
+                    
+                    if (isDynamicMotion) {
+                        animationId = requestAnimationFrame(dynamicAnimate);
+                    }
+                } catch (error) {
+                    console.error('Error in dynamic motion:', error);
+                    setTimeout(() => {
+                        if (isDynamicMotion) {
+                            animationId = requestAnimationFrame(dynamicAnimate);
+                        }
+                    }, 100);
+                }
+            }
+            
+            dynamicAnimate();
+        }
+        
+        function stopDynamicMotion() {
+            if (isChainWiggling) {
+                startChainWiggle();
+            } else {
+                resetAtomPositions();
+            }
+        }
+        
+        function saveImage() {
+            viewer.png().then(function(png) {
+                const link = document.createElement('a');
+                link.download = 'protein_structure.png';
+                link.href = png;
+                link.click();
+            });
+        }
+        
+        // Event listeners
+        document.getElementById('proteinSelect').addEventListener('change', loadProtein);
+        document.getElementById('styleSelect').addEventListener('change', function() {
+            const style = this.value;
+            const color = document.getElementById('colorSelect').value;
+            applyStyle(style, color);
+        });
+        document.getElementById('colorSelect').addEventListener('change', function() {
+            const style = document.getElementById('styleSelect').value;
+            const color = this.value;
+            applyStyle(style, color);
+        });
+        
+        // Handle window resize
+        window.addEventListener('resize', function() {
+            if (viewer && isPopupOpen) {
+                viewer.resize();
+            }
+        });
+    </script>
+</body>
+</html>
